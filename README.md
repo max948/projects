@@ -1,2 +1,4 @@
-# projects01
-Projects starting from the second half of 2022.
+# Terraform project 2022
+
+Stage 1:
+VPC
