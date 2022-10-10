@@ -176,40 +176,13 @@ resource "aws_security_group" "SecurityGroup_EC2inPublicSubnet" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"] # Maybe this needs to be removed/commented
-    security_groups  = [aws_security_group.bastion.id] # NEW
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
     Name = "${var.environment}-publicsubnetEC2-SG"
   }
 }
-
-resource "aws_security_group" "bastion" {
-  name        = "Bastion"
-  description = "Allow Inbound Traffic"
-  vpc_id = aws_vpc.my_vpc.id
-
-  ingress {
-    description      = "Bastion"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "Bastion"
-  }
-}
-
 
 
 # STEP 4 EC2 Instances
@@ -227,7 +200,6 @@ resource "aws_instance" "Public_Linux_01" {
 
   ami                    = data.aws_ami.latest_amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   subnet_id              = aws_subnet.publicsubnet01.id
   vpc_security_group_ids = [aws_security_group.SecurityGroup_EC2inPublicSubnet.id]
 
@@ -242,7 +214,6 @@ resource "aws_instance" "Public_Linux_02" {
 
   ami                    = data.aws_ami.latest_amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   subnet_id              = aws_subnet.publicsubnet02.id
   vpc_security_group_ids = [aws_security_group.SecurityGroup_EC2inPublicSubnet.id]
   user_data = file("./install_apache.sh")
@@ -256,7 +227,6 @@ resource "aws_instance" "Private_Linux_01" {
 
   ami                    = data.aws_ami.latest_amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   subnet_id              = aws_subnet.privatesubnet01.id
   vpc_security_group_ids = [aws_security_group.SecurityGroup_EC2inPublicSubnet.id]
 
@@ -271,7 +241,6 @@ resource "aws_instance" "Private_Linux_02" {
 
   ami                    = data.aws_ami.latest_amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   subnet_id              = aws_subnet.privatesubnet02.id
   vpc_security_group_ids = [aws_security_group.SecurityGroup_EC2inPublicSubnet.id]
 
@@ -279,22 +248,6 @@ resource "aws_instance" "Private_Linux_02" {
 
   tags = {
     Name = "My Amazon Linux Server Private 02"
-  }
-}
-
-
-## NEW
-
-resource "aws_instance" "Bastion" {
-  ami                    = data.aws_ami.latest_amazon_linux.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  subnet_id              = aws_subnet.publicsubnet01.id
-
-  security_groups = [aws_security_group.bastion.id]
-
-  tags = {
-    Name = "Bastion"
   }
 }
 

@@ -71,8 +71,3 @@ variable "instance_type" {
   type    = string
   default = "t2.micro"
 }
-
-variable "key_name" {
-  description = "Name of key pair to to be used for SSH"
-  default     = "key"
-}
