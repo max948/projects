@@ -1,6 +1,7 @@
-# version: working on this during weekend of 08.10.2022
+# version: working on this during around 18.10.2022
 # Questions have #? before them. OLD: shows what the previous code was
 # To disable NAT, comment or uncomment near "NAT RELATED" comments.
+# Notes: everything is working. Able to ssh to private instances via public using ssh -A
 
 # STEP 0
 
@@ -18,7 +19,6 @@ resource "aws_vpc" "my_vpc" {
 
   tags = {
     Name = "${var.environment}-vpc"
-    #? Is this funky syntax needed in the name? Name = "${var.environment}-vpc"
   }
 }
 
@@ -29,17 +29,13 @@ data "aws_availability_zones" "availableAZ" {}
 # Public Subnet 01
 resource "aws_subnet" "publicsubnet01" {
   cidr_block              = var.publicSubnetCIDR # Refers to the variables.tf file
-  # OLD: cidr_block              = "10.0.1.0/24" # Hardcoded this
-  # default = ["10.0.1.0/24"]
   vpc_id                  = aws_vpc.my_vpc.id
   map_public_ip_on_launch = true
   availability_zone       = var.az_1
-  # OLD: availability_zone       = "eu-west-1a" # Hardcoded this
 
   tags = {
     Name        = "dev-publicsubnet-01"
     AZ          = var.az_1
-    # OLD: AZ          = "eu-west-1a" # Hardcoded this
     Environment = "${var.environment}-publicsubnet"
   }
 }
@@ -47,11 +43,9 @@ resource "aws_subnet" "publicsubnet01" {
 # Public Subnet 02
 resource "aws_subnet" "publicsubnet02" {
   cidr_block              = var.publicSubnetCIDR_3
-  # OLD: cidr_block              = "10.0.3.0/24" # Hardcoded this
   vpc_id                  = aws_vpc.my_vpc.id
   map_public_ip_on_launch = true
   availability_zone       = var.az_2
-  # OLD: availability_zone       = "eu-west-1b" # Hardcoded this
 
   tags = {
     Name        = "dev-publicsubnet-02"
@@ -64,11 +58,9 @@ resource "aws_subnet" "publicsubnet02" {
 # Private Subnet 01
 resource "aws_subnet" "privatesubnet01" {
   cidr_block              = var.privateSubnetCIDR_2
-  # OLD: cidr_block              = "10.0.2.0/24" # Hardcoded this
   vpc_id                  = aws_vpc.my_vpc.id
   map_public_ip_on_launch = true
   availability_zone       = var.az_1
-  # OLD: availability_zone       = "eu-west-1a" # Hardcoded this
 
   tags = {
     Name        = "dev-privatesubnet-01"
@@ -80,11 +72,9 @@ resource "aws_subnet" "privatesubnet01" {
 # Private Subnet 02
 resource "aws_subnet" "privatesubnet02" {
   cidr_block              = var.privateSubnetCIDR_4
-  # OLD : cidr_block              = "10.0.4.0/24" # Hardcoded this
   vpc_id                  = aws_vpc.my_vpc.id
   map_public_ip_on_launch = true
   availability_zone       = var.az_2
-  # OLD: availability_zone       = "eu-west-1b" # Hardcoded this
 
   tags = {
     Name        = "dev-privatesubnet-02"
@@ -162,7 +152,7 @@ resource "aws_route_table_association" "Private02" {
 resource "aws_security_group" "SecurityGroup_EC2inPublicSubnet" {
   name = "Security Group for EC2 instances public subnets"
   vpc_id = aws_vpc.my_vpc.id
-#? How to enable SSH in addition to tcp?
+
   dynamic "ingress" {
     for_each = var.allowed_ports
     content {
@@ -176,41 +166,13 @@ resource "aws_security_group" "SecurityGroup_EC2inPublicSubnet" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"] # Maybe this needs to be removed/commented
-    security_groups  = [aws_security_group.bastion.id] # NEW
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
     Name = "${var.environment}-publicsubnetEC2-SG"
   }
 }
-
-resource "aws_security_group" "bastion" {
-  name        = "Bastion"
-  description = "Allow Inbound Traffic"
-  vpc_id = aws_vpc.my_vpc.id
-
-  ingress {
-    description      = "Bastion"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "Bastion"
-  }
-}
-
-
 
 # STEP 4 EC2 Instances
 
@@ -279,22 +241,6 @@ resource "aws_instance" "Private_Linux_02" {
 
   tags = {
     Name = "My Amazon Linux Server Private 02"
-  }
-}
-
-
-## NEW
-
-resource "aws_instance" "Bastion" {
-  ami                    = data.aws_ami.latest_amazon_linux.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  subnet_id              = aws_subnet.publicsubnet01.id
-
-  security_groups = [aws_security_group.bastion.id]
-
-  tags = {
-    Name = "Bastion"
   }
 }
 

@@ -72,6 +72,8 @@ variable "instance_type" {
   default = "t2.micro"
 }
 
+
+# Please enter which SSH key should be used to connect to your instances
 variable "key_name" {
   description = "Name of key pair to to be used for SSH"
   default     = "key"
