@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 RUN apt-get -y update
 RUN apt-get -y install apache2
-RUN echo 'This is a message from DevOps! v.1.0.02' > /var/www/html/index.html
+RUN echo 'This is a message from DevOps! v.1.0.03' > /var/www/html/index.html
 CMD ["/usr/sbin/apache2ctl", "-DFOREGROUND"]
 EXPOSE 80
