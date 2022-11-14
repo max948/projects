@@ -1,17 +1,25 @@
-# Outputs are currently not being used, so are commented
+# Outputs that are currently not being used are commented
 
 # STEP 0
 
+output "region" {
+  value = var.region
+}
+
 # STEP 1 VPC
-#output "vpc_id" {
-#  value = aws_vpc.my_vpc.id
-#}
+output "vpc_id" {
+ value = aws_vpc.my_vpc.id
+}
 
 #output "environment" {
 #  value = var.environment
 #}
 
 # STEP 2 Subnets
+
+# output "private_subnets" {
+#   value = [aws_subnet.privatesubnet01.id, aws_subnet.privatesubnet02.id]
+# }
 
 #output "publicSubnetCIDR" {
 #  value = var.publicSubnetCIDR
@@ -28,3 +36,13 @@
 #}
 
 # STEP 4 EC2 Instances
+
+# Step 6: Application Load Balancer (ALB)
+
+# output "alb_dns" {
+#   value = aws_alb.this01.dns_name
+# }
+
+# output "alb_listener" {
+#   value = aws_alb_listener.this03.id
+# }

@@ -1,7 +1,7 @@
-# version: working on this during around 18.10.2022
-# Questions have #? before them. OLD: shows what the previous code was
-# To disable NAT, comment or uncomment near "NAT RELATED" comments.
-# Notes: everything is working. Able to ssh to private instances via public using ssh -A
+# Notes: 
+# Version 18: Final
+# WARNING: ensure modules/codebuild/variables github_token is not uploaded or shared
+# Search "Replace image with image pushed by Codebuild" to update ECS image
 
 # STEP 0
 
@@ -271,4 +271,213 @@ resource "aws_nat_gateway" "nat_gateway_01" {
   depends_on = [aws_internet_gateway.internetgateway]
 }
 
+#########################
+# Step 6: Application Load Balancer (ALB)
 
+resource "aws_alb" "this01" {
+  name    = "ALB"
+  subnets = [aws_subnet.publicsubnet01.id, aws_subnet.publicsubnet02.id]
+}
+
+resource "aws_alb_target_group" "this02" {
+  name        = "targetGroup"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  target_type = "ip"
+
+  health_check {
+    healthy_threshold   = "3"
+    interval            = "30"
+    protocol            = "HTTP"
+    matcher             = "200"
+    timeout             = "3"
+    path                = "/"
+    unhealthy_threshold = "2"
+  }
+}
+
+# Redirect traffic from ALB to TG
+resource "aws_alb_listener" "this03" {
+  load_balancer_arn = aws_alb.this01.id
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = aws_alb_target_group.this02.id
+    type             = "forward"
+  }
+}
+
+#########################
+# Step 7: S3 bucket storage of the remote state
+
+# module "s3" {
+#   source = "./modules/s3"
+# }
+
+#########################
+# Step 8: ECR and ECS
+
+# Create repository in ECR
+resource "aws_ecr_repository" "repo01" {
+  name = "simpleapp-dev"
+}
+
+# Create cluster in ECS
+resource "aws_ecs_cluster" "cluster01" {
+  name = "cluster01"
+}
+
+# Create ECS Service
+resource "aws_ecs_service" "service01" {
+  name                 = "service01"
+  cluster              = aws_ecs_cluster.cluster01.id
+  task_definition      = aws_ecs_task_definition.def01.id
+  launch_type          = "FARGATE"
+  scheduling_strategy  = "REPLICA"
+  desired_count        = 1
+  force_new_deployment = true
+  network_configuration {
+    subnets          = [aws_subnet.privatesubnet01.id, aws_subnet.privatesubnet02.id]
+    assign_public_ip = true
+  }
+  depends_on = [ 
+    aws_alb_listener.this03, aws_iam_role.role01
+  ]
+}
+
+# Create ECS Task
+resource "aws_ecs_task_definition" "def01" {
+  family                   = "task_definition_name"
+  execution_role_arn       = aws_iam_role.role01.arn
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  container_definitions = jsonencode([
+    {
+      name = "task01"
+      image = "880763692340.dkr.ecr.eu-west-1.amazonaws.com/simpleapp-dev:7f62de8c0c702acd1a24692bb4ab2f1fcfc45342-dev" #
+      # Replace image with image pushed by Codebuild
+      # e.g. 880763692340.dkr.ecr.eu-west-1.amazonaws.com/simpleapp-dev:96f269930272cea3e40bbbba5b9169905e86dddd-dev
+      # 880763692340.dkr.ecr.eu-west-1.amazonaws.com/simpleapp-dev:66881965ba0a6dd698fa26e59e04ca56507478b0-dev
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort = 80
+        }
+      ]
+    }
+  ])
+}
+
+# Create IAM role for ECS
+resource "aws_iam_role" "role01" {
+  name = "role01"
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "IAM role for ECS"
+  }
+}
+
+
+resource "aws_iam_role_policy" "policy03" {
+  role = aws_iam_role.role01.name
+
+  policy = <<POLICY
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DeregisterContainerInstance",
+        "ecs:DiscoverPollEndpoint",
+        "ecs:Poll",
+        "ecs:RegisterContainerInstance",
+        "ecs:StartTelemetrySession",
+        "ecs:Submit*",
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe",
+        "ec2:DescribeInstances"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*:*:parameter/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:*:*:secret:*"
+      ]
+    },
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Action": [
+         "kms:ListKeys",
+         "kms:ListAliases",
+         "kms:Describe*",
+         "kms:Decrypt"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+POLICY
+}
+
+#########################
+# Step 9: Codebuild
+
+module "codebuild" {
+  source = "./modules/codebuild"
+  vpc_id = aws_vpc.my_vpc.id
+  private_subnets = [aws_subnet.privatesubnet01.id, aws_subnet.privatesubnet02.id]
+  region = var.region
+}
