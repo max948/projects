@@ -1,6 +1,6 @@
 # When running the first time, comment out the following block. 
-# Then run terraform init (confirm yes)\ terraform plan \ terraform apply. 
-# After the apply is complete, uncomment the below block and run terraform init plan apply as before
+# Then run terraform init \ terraform plan \ terraform apply. 
+# After the apply is complete, uncomment the below block and run terraform init (confirm yes), plan, apply as before
 
 # terraform {
 #   backend "s3" {

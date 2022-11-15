@@ -313,9 +313,9 @@ resource "aws_alb_listener" "this03" {
 #########################
 # Step 7: S3 bucket storage of the remote state
 
-# module "s3" {
-#   source = "./modules/s3"
-# }
+module "s3" {
+  source = "./modules/s3"
+}
 
 #########################
 # Step 8: ECR and ECS
